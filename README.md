@@ -22,7 +22,7 @@ This project implements a segmented neural network to approximate the function $
   - **1 output layer**:
     - **Activation**: Linear
 
-- **Middle States**: $ M_0 $ and $ M_1 $ are **randomly initialized** and are **trainable** during training.
+- **Middle States**: $ M_0 \in \mathbb{R}^{100 \times 16} $ and $ M_1 \in \mathbb{R}^{100 \times 16}$ are **randomly initialized** and are **trainable** during training.
 
 ## Training Details
 
@@ -32,9 +32,9 @@ $$
 \mathcal{L}_{total} = \mathcal{L}_1 + \mathcal{L}_2 + \mathcal{L}_3
 $$
 Where:
-- $ \mathcal{L}_1 = \frac{1}{n} \sum_{i=1}^{n} (M_{0,i} - \hat{M}_{0,i})^2 $
-- $ \mathcal{L}_2 = \frac{1}{n} \sum_{i=1}^{n} (M_{1,i} - \hat{M}_{1,i})^2 $
-- $ \mathcal{L}_3 = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $
+ $ \mathcal{L}_1 = \frac{1}{n} \sum_{i=1}^{n} (M_{0,i} - \hat{M}_{0,i})^2 $
+ $ \mathcal{L}_2 = \frac{1}{n} \sum_{i=1}^{n} (M_{1,i} - \hat{M}_{1,i})^2 $
+ $ \mathcal{L}_3 = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $
 
 Where:
 - $ M_0 $ and $ M_1 $ are the trainable middle states.
@@ -55,3 +55,7 @@ Each middle state ($ M_0 $, $ M_1 $) is updated during the corresponding segment
 ### Epochs
 - Total: 1000 epochs.
 
+### Results
+- ![losses](./images/losses.png)
+
+- ![results](./images/results.png)

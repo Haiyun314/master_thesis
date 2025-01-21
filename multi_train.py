@@ -1,14 +1,14 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os 
 
 def unit_nn(input_shape, output_shape, units, layers_per_segment):
     input_layer = tf.keras.layers.Input(shape=input_shape)
     x = input_layer
     for _ in range(layers_per_segment):
-        x = tf.keras.layers.Dense(units, activation='relu')(x)
-    output_layer = tf.keras.layers.Dense(output_shape)(x)
+        x = tf.keras.layers.Dense(units, activation='tanh')(x)
+    output_layer = tf.keras.layers.Dense(output_shape, activation= 'tanh')(x)
     model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
     return model
 
@@ -18,9 +18,9 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
     middle_state1 = tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True)
 
     # Instantiate each segment
-    segment1 = unit_nn(x.shape[1:], middle_state0.shape[1], units=units, layers_per_segment=layers_per_segment)
-    segment2 = unit_nn(middle_state0.shape[1:], middle_state1.shape[1], units=units, layers_per_segment=layers_per_segment)
-    segment3 = unit_nn(middle_state1.shape[1:], y.shape[1], units=units, layers_per_segment=layers_per_segment)
+    segment1 = unit_nn(x.shape[1:], middle_state0.shape[1], units=units, layers_per_segment=layers_per_segment) # shape x = (1, ), y = 16
+    segment2 = unit_nn(middle_state0.shape[1:], middle_state1.shape[1], units=units, layers_per_segment=layers_per_segment) # shape x = (16, ), y = 16
+    segment3 = unit_nn(middle_state1.shape[1:], y.shape[1], units=units, layers_per_segment=layers_per_segment) # shape x = (16, ), y = 1
 
     # Combine segments into a single unified model
     input_layer = tf.keras.layers.Input(shape=x.shape[1:])
@@ -31,6 +31,8 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
 
     optimizer = tf.keras.optimizers.Adam(learning_rate)
     mse_loss = tf.keras.losses.MeanSquaredError()
+
+    loss_record = []
 
     for epoch in range(epochs):
         # Train segment 1
@@ -53,24 +55,29 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
             loss3 = mse_loss(predictions, y)
         gradients3 = tape3.gradient(loss3, segment3.trainable_variables)
         optimizer.apply_gradients(zip(gradients3, segment3.trainable_variables))
-        
+
         segements_loss = loss1 + loss2 + loss3
         full_loss = mse_loss(full_model(x), y)
+        loss_record.append([segements_loss, full_loss])
         print(f"Epoch {epoch + 1}/{epochs}, Loss of segements: {segements_loss.numpy()}, Full model loss: {full_loss.numpy()}")
 
-    return full_model
+    return full_model, loss_record
 
-def plot(x, y, predictions):
-    plt.plot(x, y, label="True sin(x)")
-    plt.plot(x, predictions, label="Predicted")
+def plot(x, y, predictions, name):
+    plt.plot(x, y, label=name[0])
+    plt.plot(x, predictions, label=name[1])
     plt.legend()
     plt.pause(1)
+    if not os.path.exists("images"):
+        os.makedirs("images")
+    plt.savefig(f"images/{name[2]}.png")
+    plt.cla()
 
 def main():
     x = np.linspace(0, 2 * np.pi, 100).reshape(-1, 1).astype(np.float32) 
     y = np.sin(x).reshape(-1, 1).astype(np.float32)  
 
-    model = multi_shot(
+    model, loss_record = multi_shot(
         x, y,
         layers_per_segment=2,
         units=16,
@@ -79,7 +86,12 @@ def main():
     )
 
     predictions = model.predict(x)
-    plot(x, y, predictions)
+    plot(x, y, predictions,
+         ["True sin(x)", "Predicted sin(x)", "results"])
+    plot(range(len(loss_record)), 
+         [record[0] for record in loss_record], 
+         [record[1] for record in loss_record], 
+         ["segements loss", "full model loss", "losses"])
 
 if __name__ == "__main__":
     main()
