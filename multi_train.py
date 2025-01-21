@@ -1,136 +1,85 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-import time
 
-# Define the Multi-Shooting Model
-class MultiShootModel(tf.keras.Model):
-    def __init__(self, num_segments, layers_per_segment, units):
-        super(MultiShootModel, self).__init__()
-        self.num_segments = num_segments
-        self.segments = []
-        for _ in range(num_segments): # 5 units each layer
-            segment = tf.keras.Sequential([
-                tf.keras.layers.Dense(units, activation='relu') for _ in range(layers_per_segment)
-            ])
-            self.segments.append(segment)
-        self.initial_layer = tf.keras.layers.Dense(units, activation='relu')
-        self.final_layer = tf.keras.layers.Dense(1)
 
-    def call(self, x):
-        segment_outputs = []
-        x_segment = self.initial_layer(x)
-        for segment in self.segments:
-            x_segment = segment(x_segment)
-            segment_outputs.append(x_segment)
-        output = self.final_layer(segment_outputs[-1])
-        return output, segment_outputs
+def unit_nn(input_shape, output_shape, units, layers_per_segment):
+    input_layer = tf.keras.layers.Input(shape=input_shape)
+    x = input_layer
+    for _ in range(layers_per_segment):
+        x = tf.keras.layers.Dense(units, activation='relu')(x)
+    output_layer = tf.keras.layers.Dense(output_shape)(x)
+    model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
+    return model
 
-# Continuity loss
-def middle_state_loss(segment_outputs, middle_state, middle_state_shape):
-    loss = 0
-    for i in range(len(segment_outputs) - 1):
-        if middle_state_shape[-1] == 2:
-            loss += tf.reduce_mean(tf.square(segment_outputs[i][:, -1] - segment_outputs[i + 1][:, 0])) # The last unit of the first segment's second layer and the first element of the next segment's first layer are set to be equal.
-        ## use a simple network to init all middle layers, then use those middle states as deeper network's middle states
-        elif middle_state_shape[-1] == 5:
-            loss += tf.reduce_mean(tf.square(segment_outputs[i] - middle_state[i])) 
-        elif middle_state_shape[-1] == 1:
-            loss += tf.reduce_mean(tf.square(tf.reduce_sum(segment_outputs[i], axis= -1) - middle_state[i]))
-        else:
-            raise ValueError('middle_state_shape[-1] should be 1 or 2 or 5')
-    return loss
+def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
+    # Randomly initialize trainable middle states
+    middle_state0 = tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True)
+    middle_state1 = tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True)
 
-def training(x, 
-             y, 
-             num_segments, 
-             layers_per_segment, 
-             units, 
-             epochs, 
-             learning_rate,
-             middle_state_shape,
-             name):
-    # Instantiate Model
-    model = MultiShootModel(num_segments, layers_per_segment, units)
+    # Instantiate each segment
+    segment1 = unit_nn(x.shape[1:], middle_state0.shape[1], units=units, layers_per_segment=layers_per_segment)
+    segment2 = unit_nn(middle_state0.shape[1:], middle_state1.shape[1], units=units, layers_per_segment=layers_per_segment)
+    segment3 = unit_nn(middle_state1.shape[1:], y.shape[1], units=units, layers_per_segment=layers_per_segment)
+
+    # Combine segments into a single unified model
+    input_layer = tf.keras.layers.Input(shape=x.shape[1:])
+    intermediate1 = segment1(input_layer)
+    intermediate2 = segment2(intermediate1)
+    output_layer = segment3(intermediate2)
+    full_model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
+
     optimizer = tf.keras.optimizers.Adam(learning_rate)
+    mse_loss = tf.keras.losses.MeanSquaredError()
 
-    if middle_state_shape[-1]:
-        middle_state = np.random.rand(middle_state_shape[0], middle_state_shape[1]).astype(np.float32) # 1 or number of units
-        middle_state = [tf.Variable(middle_state)] * num_segments
-
-    # Training Loop
     for epoch in range(epochs):
-        with tf.GradientTape() as tape:
-            # Forward pass
-            y_pred, segment_outputs = model(x)
+        # Train segment 1
+        with tf.GradientTape() as tape1:
+            intermediate1_output = segment1(x, training=True)
+            loss1 = mse_loss(intermediate1_output, middle_state0)
+        gradients1 = tape1.gradient(loss1, segment1.trainable_variables + [middle_state0])
+        optimizer.apply_gradients(zip(gradients1, segment1.trainable_variables + [middle_state0]))
 
-            # Compute fit loss
-            fit_loss = tf.reduce_mean(tf.square(y - y_pred))
-            if middle_state_shape[-1]:
-                # Middle state loss
-                mid_loss = middle_state_loss(segment_outputs, middle_state, middle_state_shape)
+        # Train segment 2
+        with tf.GradientTape() as tape2:
+            intermediate2_output = segment2(intermediate1_output, training=True)
+            loss2 = mse_loss(intermediate2_output, middle_state1)
+        gradients2 = tape2.gradient(loss2, segment2.trainable_variables + [middle_state1])
+        optimizer.apply_gradients(zip(gradients2, segment2.trainable_variables + [middle_state1]))
 
-                # Total loss
-                total_loss = fit_loss + mid_loss
-            else:
-                total_loss = fit_loss
+        # Train segment 3
+        with tf.GradientTape() as tape3:
+            predictions = segment3(intermediate2_output, training=True)
+            loss3 = mse_loss(predictions, y)
+        gradients3 = tape3.gradient(loss3, segment3.trainable_variables)
+        optimizer.apply_gradients(zip(gradients3, segment3.trainable_variables))
+        
+        segements_loss = loss1 + loss2 + loss3
+        full_loss = mse_loss(full_model(x), y)
+        print(f"Epoch {epoch + 1}/{epochs}, Loss of segements: {segements_loss.numpy()}, Full model loss: {full_loss.numpy()}")
 
-        # Backpropagation
-        gradients = tape.gradient(total_loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    return full_model
 
-        # Print progress
-        if epoch % 100 == 0:
-            print(f"Epoch {epoch}, Fit Loss: {fit_loss.numpy():.4f}, Total Loss: {total_loss.numpy():.4f}")
-    return model, total_loss.numpy()
-
-def save_img(x, y, y_pred, name, loss, total_time):
-    plt.figure()   
-    plt.plot(x, y, label='True')
-    plt.plot(x, y_pred, label='Predicted')
-    plt.text(0, 0, f'Loss: {loss:.4f} Total_Time:{total_time:.4f}', fontsize=12)
+def plot(x, y, predictions):
+    plt.plot(x, y, label="True sin(x)")
+    plt.plot(x, predictions, label="Predicted")
     plt.legend()
-    if not os.path.exists('./images'):
-        os.makedirs('./images')
-    plt.savefig(f'./images/{name}.png')
     plt.pause(1)
 
-def main(args):
-    x = args['x']
-    y = args['y']
-    start = time.perf_counter()
-    model, loss = training(**args)
-    total_time = time.perf_counter() - start
-    y_pred, _ = model(x)
-    name = args['name']
-    save_img(x, y, y_pred, name, loss, total_time)
+def main():
+    x = np.linspace(0, 2 * np.pi, 100).reshape(-1, 1).astype(np.float32) 
+    y = np.sin(x).reshape(-1, 1).astype(np.float32)  
 
+    model = multi_shot(
+        x, y,
+        layers_per_segment=2,
+        units=16,
+        epochs=1000,
+        learning_rate=0.001
+    )
 
-if __name__ == '__main__':
-    x = np.linspace(0, 2 * np.pi, 100).reshape(-1, 1).astype(np.float32)
-    y = np.sin(x).astype(np.float32)
+    predictions = model.predict(x)
+    plot(x, y, predictions)
 
-    # Hyperparameters
-    num_segments = 3
-    layers_per_segment = 2
-    units = 5
-    epochs = 1000
-    learning_rate = 1e-3
-    times = 3
-    middle_state_shape = (len(x), 2) # 0: without middle state, 
-                                     # 1: with middle state shape n*1, 
-                                     # 2: special case, connecting the last unit and first unit of next segement, 
-                                     # 5: with middle state shape n*5
-    for j in range(times):  
-        args = {'x': x,
-                'y': y,
-                'num_segments': num_segments, 
-                'layers_per_segment': layers_per_segment, 
-                'units': units, 
-                'epochs': epochs, 
-                'learning_rate': learning_rate,
-                'middle_state_shape': middle_state_shape,
-                'name': f'middle_state_shape_{middle_state_shape}_epochs_{epochs}_learning_rate_{learning_rate}_times_{j}'}
-        main(args)
-
+if __name__ == "__main__":
+    main()
