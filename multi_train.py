@@ -63,9 +63,13 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
 
     return full_model, loss_record
 
-def plot(x, y, predictions, name):
-    plt.plot(x, y, label=name[0])
-    plt.plot(x, predictions, label=name[1])
+def plot(x, y, predictions, name, loss: True):
+    if loss:
+        plt.plot(x, np.log10(y), label=name[0])
+        plt.plot(x, np.log10(predictions), label=name[1])
+    else:
+        plt.plot(x, y, label=name[0])
+        plt.plot(x, predictions, label=name[1])
     plt.legend()
     plt.pause(1)
     if not os.path.exists("images"):
@@ -81,17 +85,17 @@ def main():
         x, y,
         layers_per_segment=2,
         units=16,
-        epochs=1000,
+        epochs=2000,
         learning_rate=0.001
     )
 
     predictions = model.predict(x)
     plot(x, y, predictions,
-         ["True sin(x)", "Predicted sin(x)", "results"])
+         ["True sin(x)", "Predicted sin(x)", "results"], loss=False)
     plot(range(len(loss_record)), 
          [record[0] for record in loss_record], 
          [record[1] for record in loss_record], 
-         ["segements loss", "full model loss", "losses"])
+         ["segements loss", "full model loss", "losses"], loss=True)
 
 if __name__ == "__main__":
     main()
