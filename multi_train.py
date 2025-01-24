@@ -32,6 +32,7 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
     optimizer = tf.keras.optimizers.Adam(learning_rate)
     mse_loss = tf.keras.losses.MeanSquaredError()
 
+
     loss_record = []
 
     for epoch in range(epochs):
