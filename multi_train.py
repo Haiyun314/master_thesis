@@ -44,14 +44,14 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
 
         # Train segment 2
         with tf.GradientTape() as tape2:
-            intermediate2_output = segment2(intermediate1_output, training=True)
+            intermediate2_output = segment2(middle_state0, training=True)
             loss2 = mse_loss(intermediate2_output, middle_state1)
         gradients2 = tape2.gradient(loss2, segment2.trainable_variables + [middle_state1])
         optimizer.apply_gradients(zip(gradients2, segment2.trainable_variables + [middle_state1]))
 
         # Train segment 3
         with tf.GradientTape() as tape3:
-            predictions = segment3(intermediate2_output, training=True)
+            predictions = segment3(middle_state1, training=True)
             loss3 = mse_loss(predictions, y)
         gradients3 = tape3.gradient(loss3, segment3.trainable_variables)
         optimizer.apply_gradients(zip(gradients3, segment3.trainable_variables))
@@ -63,9 +63,13 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
 
     return full_model, loss_record
 
-def plot(x, y, predictions, name):
-    plt.plot(x, y, label=name[0])
-    plt.plot(x, predictions, label=name[1])
+def plot(x, y, predictions, name, loss: bool = True):
+    if loss: 
+        plt.plot(x, np.log(y), label=name[0])
+        plt.plot(x, np.log(predictions), label=name[1])
+    else:
+        plt.plot(x, y, label=name[0])
+        plt.plot(x, predictions, label=name[1])
     plt.legend()
     plt.pause(1)
     if not os.path.exists("images"):
@@ -81,17 +85,17 @@ def main():
         x, y,
         layers_per_segment=2,
         units=16,
-        epochs=1000,
+        epochs=5000,
         learning_rate=0.001
     )
 
     predictions = model.predict(x)
     plot(x, y, predictions,
-         ["True sin(x)", "Predicted sin(x)", "results"])
+         ["True sin(x)", "Predicted sin(x)", "results"], loss=False)
     plot(range(len(loss_record)), 
          [record[0] for record in loss_record], 
          [record[1] for record in loss_record], 
-         ["segements loss", "full model loss", "losses"])
+         ["segements loss", "full model loss", "losses"], loss=True)
 
 if __name__ == "__main__":
     main()
