@@ -12,21 +12,22 @@ def unit_nn(input_shape, output_shape, units, layers_per_segment):
     model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
     return model
 
-def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
+def multi_shot(x, y, layers_per_segment, number_of_segments, units, epochs, learning_rate):
     # Randomly initialize trainable middle states
-    middle_state0 = tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True)
-    middle_state1 = tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True)
-
+    middle_state = [tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True) for _ in range(number_of_segments)]
+    all_states = [x] + middle_state + [y]
+    segments = []
     # Instantiate each segment
-    segment1 = unit_nn(x.shape[1:], middle_state0.shape[1], units=units, layers_per_segment=layers_per_segment) # shape x = (1, ), y = 16
-    segment2 = unit_nn(middle_state0.shape[1:], middle_state1.shape[1], units=units, layers_per_segment=layers_per_segment) # shape x = (16, ), y = 16
-    segment3 = unit_nn(middle_state1.shape[1:], y.shape[1], units=units, layers_per_segment=layers_per_segment) # shape x = (16, ), y = 1
+    for i in range(0, len(all_states) - 1):
+        segment = unit_nn(all_states[i].shape[1:], all_states[i + 1].shape[1], units=units, layers_per_segment=layers_per_segment)
+        segments.append(segment)
 
     # Combine segments into a single unified model
     input_layer = tf.keras.layers.Input(shape=x.shape[1:])
-    intermediate1 = segment1(input_layer)
-    intermediate2 = segment2(intermediate1)
-    output_layer = segment3(intermediate2)
+    middle_segment = input_layer
+    for element in segments:
+        middle_segment = element(middle_segment)
+    output_layer = middle_segment
     full_model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
 
     optimizer = tf.keras.optimizers.Adam(learning_rate)
@@ -35,31 +36,25 @@ def multi_shot(x, y, layers_per_segment, units, epochs, learning_rate):
     loss_record = []
 
     for epoch in range(epochs):
-        # Train segment 1
-        with tf.GradientTape() as tape1:
-            intermediate1_output = segment1(x, training=True)
-            loss1 = mse_loss(intermediate1_output, middle_state0)
-        gradients1 = tape1.gradient(loss1, segment1.trainable_variables + [middle_state0])
-        optimizer.apply_gradients(zip(gradients1, segment1.trainable_variables + [middle_state0]))
+        segments_loss = 0
+        for i in range(0, len(segments)):
+            with tf.GradientTape() as tape:
+                intermediate_output = segments[i](all_states[i], training=True)
+                loss = mse_loss(intermediate_output, all_states[i + 1])
 
-        # Train segment 2
-        with tf.GradientTape() as tape2:
-            intermediate2_output = segment2(middle_state0, training=True)
-            loss2 = mse_loss(intermediate2_output, middle_state1)
-        gradients2 = tape2.gradient(loss2, segment2.trainable_variables + [middle_state1])
-        optimizer.apply_gradients(zip(gradients2, segment2.trainable_variables + [middle_state1]))
+            # Note: the place of middle_state in the trainable variables list is important
+            if i == len(segments) - 1:
+                gradients = tape.gradient(loss, segments[i].trainable_variables)
+                optimizer.apply_gradients(zip(gradients, segments[i].trainable_variables))
+            else:
+                gradients = tape.gradient(loss, segments[i].trainable_variables + [middle_state[i]])
+                optimizer.apply_gradients(zip(gradients, segments[i].trainable_variables + [middle_state[i]]))
+            segments_loss += loss
+            del tape
 
-        # Train segment 3
-        with tf.GradientTape() as tape3:
-            predictions = segment3(middle_state1, training=True)
-            loss3 = mse_loss(predictions, y)
-        gradients3 = tape3.gradient(loss3, segment3.trainable_variables)
-        optimizer.apply_gradients(zip(gradients3, segment3.trainable_variables))
-
-        segements_loss = loss1 + loss2 + loss3
         full_loss = mse_loss(full_model(x), y)
-        loss_record.append([segements_loss, full_loss])
-        print(f"Epoch {epoch + 1}/{epochs}, Loss of segements: {segements_loss.numpy()}, Full model loss: {full_loss.numpy()}")
+        loss_record.append([segments_loss, full_loss])
+        print(f"Epoch {epoch + 1}/{epochs}, Loss of segments: {segments_loss.numpy()}, Full model loss: {full_loss.numpy()}")
 
     return full_model, loss_record
 
@@ -82,8 +77,10 @@ def main():
     y = np.sin(x).reshape(-1, 1).astype(np.float32)  
 
     model, loss_record = multi_shot(
-        x, y,
+        x = x, 
+        y = y,
         layers_per_segment=2,
+        number_of_segments=2,
         units=16,
         epochs=5000,
         learning_rate=0.001
