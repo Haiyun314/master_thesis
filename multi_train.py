@@ -13,7 +13,7 @@ def unit_nn(input_shape, output_shape, units, layers_per_segment):
     model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
     return model
 
-def multi_shot(x, y, layers_per_segment, number_of_segments, units, epochs, learning_rate, train_full_model):
+def multi_shot(x, y, layers_per_segment, number_of_segments, units, epochs, learning_rate, train_full_model, name = None):
     # Randomly initialize trainable middle states
     middle_state = [tf.Variable(tf.random.normal([x.shape[0], units], dtype=tf.float32), trainable=True) for _ in range(number_of_segments)]
     all_states = [x] + middle_state + [y]
@@ -92,12 +92,13 @@ def main(args):
         **args
     )
     predictions = model.predict(args['x'])
+    args['image_name'] += f"layers{args['layers_per_segment']}_segments{args['number_of_segments']}_epochs{args['epochs']}"
     plot(args['x'], args['y'], predictions,
-         ["True sin(x)", "Predicted sin(x)", "train_full_results"], loss=False)
+         [args['name']['legend'][0], args['name']['legend'][1], args['name']['image_name']], loss=False)
     plot(range(len(loss_record)), 
          [record[0] for record in loss_record], 
          [record[1] for record in loss_record], 
-         ["segements loss", "full model loss", "train_full_losses"], loss=True)
+         [args['name']['legend'][0]+'loss', args['name']['legend'][1]+'loss', args['name']['image_name']+'loss'], loss=True)
 
 if __name__ == "__main__":
     x = np.linspace(0, 2 * np.pi, 100).reshape(-1, 1).astype(np.float32) 
@@ -110,6 +111,8 @@ if __name__ == "__main__":
         'units':16,
         'epochs':5000,
         'learning_rate':0.001,
-        'train_full_model': False
+        'train_full_model': False,
+        'name' : {'legend': ['image1', 'image2'], 'image_name': ''}
     }
     main(args)
+
