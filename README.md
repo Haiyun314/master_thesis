@@ -1,61 +1,36 @@
-# Multi-Segment Neural Network for $ \sin(x) $ Approximation
+# A Hybrid Approach for Balancing a Two-Wheeled Humanoid Robot
 
-## Project Description
-This project implements a segmented neural network to approximate the function $ y = \sin(x) $. The network is divided into three segments, each trained independently with trainable intermediate states. The final model is capable of directly mapping input $ x $ to output $ y $.
+## Abstract
+Balancing a two-wheeled humanoid robot on uneven terrain presents significant
+challenges due to its nonlinear, underactuated dynamics and environmental unpredictability. This project proposes a hybrid control framework that integrates classical Proportional-Integral-Derivative (PID) control, a specifically designed action-
+mapping strategy, and reinforcement learning (RL) using Proximal Policy Optimization (PPO). The PID controller and action-mapping provide a structured baseline
+for initial stabilization, while the RL component refines the control policy, using
+Kullback–Leibler (KL) divergence as a performance metric to guide exploration.
+This “guided learning” approach significantly enhances training efficiency and policy robustness compared to purely RL-based methods, which often suffer from sparse rewards and unstable convergence. Simulation results demonstrate that the proposed
+method achieves reliable and consistent balancing performance across a variety of
+uneven terrains, outperforming standard PPO in both training speed and stability. These findings highlight the effectiveness of combining domain knowledge with
+learning-based techniques for advanced robotic control tasks.
 
-## Architecture
+## Content
+1. [Introduction](#1-introduction)  
+    1.1 [Motivation](#11-motivation)  
+    1.2 [Problem Statement](#12-problem-statement)  
+    1.3 [Research Objectives](#13-research-objectives)  
+    1.4 [Contributions](#14-contributions)  
 
-### Input and Output
-- **Input**: $ x \in \mathbb{R}^{100 \times 1} $ (discretized points in the range $[0, 2\pi]$).
-- **Output**: $ y \in \mathbb{R}^{100 \times 1} $, representing $ \sin(x) $.
+2. [Background](#2-background)  
+    2.1 [Classical Control Approaches: PID Control](#21-classical-control-approaches-pid-control)  
+    2.2 [Deep Reinforcement Learning in Robotics](#22-deep-reinforcement-learning-in-robotics)  
+    2.3 [Bellman Equation](#23-bellman-equation)  
+    2.4 [Policy Gradient Methods](#24-policy-gradient-methods)  
+    2.5 [Temporal Difference (TD) Error](#25-temporal-difference-td-error)  
+    2.6 [Proximal Policy Optimization (PPO)](#26-proximal-policy-optimization-ppo)  
+    2.7 [Hybrid Control Approaches](#27-hybrid-control-approaches)  
 
-### Network Structure
-- The network is divided into **3 segments**:
-  1. **Segment 1**: Maps $ x $ to $ M_0 $ (trainable middle state).
-  2. **Segment 2**: Maps $ M_0 $ to $ M_1 $ (trainable middle state).
-  3. **Segment 3**: Maps $ M_1 $ to $ y $.
+3. [Methodology](#3-methodology)
 
-- Each segment consists of:
-  - **2 hidden layers**:
-    - **Units**: 16
-    - **Activation**: ReLU
-  - **1 output layer**:
-    - **Activation**: Linear
+4. [Results](#4-results)
 
-- **Middle States**: $ M_0 \in \mathbb{R}^{100 \times 16} $ and $ M_1 \in \mathbb{R}^{100 \times 16}$ are **randomly initialized** and are **trainable** during training.
+5. [Discussion](#5-discussion)
 
-## Training Details
-
-### Loss Function
-The total loss is the sum of the errors in each segment:
-$$
-\mathcal{L}_{total} = \mathcal{L}_1 + \mathcal{L}_2 + \mathcal{L}_3
-$$
-Where:
- $ \mathcal{L}_1 = \frac{1}{n} \sum_{i=1}^{n} (M_{0,i} - \hat{M}_{0,i})^2 $
- $ \mathcal{L}_2 = \frac{1}{n} \sum_{i=1}^{n} (M_{1,i} - \hat{M}_{1,i})^2 $
- $ \mathcal{L}_3 = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 $
-
-Where:
-- $ M_0 $ and $ M_1 $ are the trainable middle states.
-- $ \hat{M}_0 $ and $ \hat{M}_1 $ are the outputs of the segments.
-- $ y $ is the target output (sine function).
-
-### Optimizer
-- **Algorithm**: Adam Optimizer
-- **Learning Rate**: $ 0.001 $
-
-### Training Process
-1. **Segment 1**: Trains to minimize the error between its output and $ M_0 $.
-2. **Segment 2**: Trains to minimize the error between its output and $ M_1 $.
-3. **Segment 3**: Trains to minimize the error between its output and $ y $.
-
-Each middle state ($ M_0 $, $ M_1 $) is updated during the corresponding segment's training.
-
-### Epochs
-- Total: 1000 epochs.
-
-### Results
-- ![losses](./images/losses.png)
-
-- ![results](./images/results.png)
+6. [Conclusions](#6-conclusions)
