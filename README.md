@@ -12,25 +12,25 @@ uneven terrains, outperforming standard PPO in both training speed and stability
 learning-based techniques for advanced robotic control tasks.
 
 ## Content
-1. [Introduction](#1-introduction)  
-    1.1 [Motivation](#11-motivation)  
-    1.2 [Problem Statement](#12-problem-statement)  
-    1.3 [Research Objectives](#13-research-objectives)  
-    1.4 [Contributions](#14-contributions)  
+1. [Introduction]
+-   1.1 [Motivation]
+-   1.2 [Problem Statement] 
+-   1.3 [Research Objectives]
+-   1.4 [Contributions] 
 
-2. [Background](#2-background)  
-    2.1 [Classical Control Approaches: PID Control](#21-classical-control-approaches-pid-control)  
-    2.2 [Deep Reinforcement Learning in Robotics](#22-deep-reinforcement-learning-in-robotics)  
-    2.3 [Bellman Equation](#23-bellman-equation)  
-    2.4 [Policy Gradient Methods](#24-policy-gradient-methods)  
-    2.5 [Temporal Difference (TD) Error](#25-temporal-difference-td-error)  
-    2.6 [Proximal Policy Optimization (PPO)](#26-proximal-policy-optimization-ppo)  
-    2.7 [Hybrid Control Approaches](#27-hybrid-control-approaches)  
+2. [Background] 
+-   2.1 [Classical Control Approaches: PID Control] 
+-   2.2 [Deep Reinforcement Learning in Robotics]
+-   2.3 [Bellman Equation]  
+-   2.4 [Policy Gradient Methods] 
+-   2.5 [Temporal Difference (TD) Error] 
+-   2.6 [Proximal Policy Optimization (PPO)] 
+-   2.7 [Hybrid Control Approaches]
 
-3. [Methodology](#3-methodology)
+3. [Methodology]
 
-4. [Results](#4-results)
+4. [Results]
 
-5. [Discussion](#5-discussion)
+5. [Discussion]
 
-6. [Conclusions](#6-conclusions)
+6. [Conclusions]
