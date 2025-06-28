@@ -1,15 +1,7 @@
 # A Hybrid Approach for Balancing a Two-Wheeled Humanoid Robot
 
 ## Abstract
-Balancing a two-wheeled humanoid robot on uneven terrain presents significant
-challenges due to its nonlinear, underactuated dynamics and environmental unpredictability. This project proposes a hybrid control framework that integrates classical Proportional-Integral-Derivative (PID) control, a specifically designed action-
-mapping strategy, and reinforcement learning (RL) using Proximal Policy Optimization (PPO). The PID controller and action-mapping provide a structured baseline
-for initial stabilization, while the RL component refines the control policy, using
-Kullback–Leibler (KL) divergence as a performance metric to guide exploration.
-This “guided learning” approach significantly enhances training efficiency and policy robustness compared to purely RL-based methods, which often suffer from sparse rewards and unstable convergence. Simulation results demonstrate that the proposed
-method achieves reliable and consistent balancing performance across a variety of
-uneven terrains, outperforming standard PPO in both training speed and stability. These findings highlight the effectiveness of combining domain knowledge with
-learning-based techniques for advanced robotic control tasks.
+Balancing a two-wheeled humanoid robot on uneven terrain presents significant challenges due to its nonlinear, underactuated dynamics and environmental unpredictability. This project proposes a hybrid control framework that integrates classical \ac{PID} control, a specifically designed action-mapping strategy, and \ac{RL} using \ac{PPO}. The \ac{PID} controller and action-mapping provide a structured baseline for initial stabilization, while the \ac{RL} component refines the control policy. This “guided learning” approach significantly enhances training efficiency and policy robustness compared to purely \ac{PID} or \ac{RL}-based methods. Simulation results demonstrate that the proposed method achieves reliable and consistent balancing performance across a variety of uneven terrains, outperforming the standard \ac{PID} controller in terms of stability and balancing success rate. These findings highlight the effectiveness of combining domain knowledge with learning-based techniques for advanced robotic control tasks.
 
 # Report Outline
 
