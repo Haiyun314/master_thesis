@@ -1,1 +1,1 @@
-./simulation_result/*.png
+simulation_result/*.png*.png # optional: prevent future tracking
