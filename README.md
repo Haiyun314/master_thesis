@@ -37,9 +37,9 @@ Comparison between pure PID (left) and DRL-based control (right) on flat terrain
 ## 2. Background
 - 2.1 Problem Setting
 - 2.2 Classical Control Approaches: PID Control
-- 2.3 Deep Reinforcement Learning
-  - 2.3.1 Deep Reinforcement Learning Overview
-  - 2.3.2 Deep Reinforcement Learning Concepts
+- 2.3 Foundational Concepts in DRL
+  - 2.3.1 Core Concepts: Reward, Return, and Value Functions
+  - 2.3.2 MDP Formulation and Network-Based Policy Design
 - 2.4 Bellman Equation
   - 2.4.1 Existence of Iterative Solution
 - 2.5 Temporal Difference (TD) Learning
